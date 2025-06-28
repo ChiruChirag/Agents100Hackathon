@@ -63,3 +63,19 @@ hackback/
 *.sqlite
 *.sqlite3
 vector_db/
+
+# ChromaDB - All variations
+EduVerse_Backend/chromadb/
+EduVerse_Backend/chroma_db/
+EduVerse_Backend/chroma/
+EduVerse_Backend/vector_db/
+chromadb/
+chroma_db/
+chroma/
+vector_db/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+*.chroma
