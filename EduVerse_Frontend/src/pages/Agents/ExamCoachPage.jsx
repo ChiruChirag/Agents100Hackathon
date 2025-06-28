@@ -163,6 +163,7 @@ const ExamCoachPage = () => {
           console.log('=== PARSING BACKEND RESULT ===');
           console.log('Result type:', typeof result);
           console.log('Result content:', result);
+          console.log('Result stringified:', JSON.stringify(result, null, 2));
           
           // Check if we have a structured result with questions
           if (result && typeof result === 'object' && result.questions && Array.isArray(result.questions)) {
