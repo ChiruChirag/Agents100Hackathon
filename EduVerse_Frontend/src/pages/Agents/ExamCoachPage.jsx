@@ -192,6 +192,9 @@ const ExamCoachPage = () => {
     
     try {
       // Calculate score by comparing answers
+      // Get current user ID
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      const userId = userData.user_id || userData.id || localStorage.getItem('user_id') || 'demo-user';
       let correctAnswers = 0;
       const totalQuestions = currentExam.questions?.length || 0;
       const questionResults = [];
