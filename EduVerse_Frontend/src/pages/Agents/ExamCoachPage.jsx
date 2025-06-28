@@ -116,11 +116,16 @@ const ExamCoachPage = () => {
 
   const generateExam = async () => {
     if (!newExam.subject || !newExam.topic) {
-      toast.error('Please fill in subject and topic');
+      toast.error('Please fill in all required fields');
       return;
     }
 
     setLoading(true);
+    
+    // Debug log to track question_count being sent
+    console.log('Frontend sending question_count:', newExam.question_count);
+    console.log('Complete newExam object:', newExam);
+
     try {
       // Get current user ID
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
