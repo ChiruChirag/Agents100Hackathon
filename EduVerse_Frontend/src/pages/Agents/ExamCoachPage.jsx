@@ -37,17 +37,33 @@ const ExamCoachPage = () => {
   // Timer effect for current exam
   useEffect(() => {
     let timer;
+    
     if (currentExam && currentExam.timeRemaining > 0) {
       timer = setInterval(() => {
         setCurrentExam(prev => {
-          if (!prev || prev.timeRemaining <= 1) {
-            // Time's up - auto finish exam
-            if (prev && prev.timeRemaining <= 1) {
-              toast.warning('Time is up! Exam submitted automatically.');
-              setTimeout(() => finishExam(), 100); // Delay to avoid state conflicts
-            }
+          // Safety check
+          if (!prev || typeof prev.timeRemaining !== 'number') {
+            console.error('Invalid exam state in timer');
             return prev;
           }
+          
+          if (prev.timeRemaining <= 1) {
+            // Time's up - auto finish exam
+            toast.warning('Time is up! Exam submitted automatically.');
+            
+            // Use setTimeout to avoid state conflicts
+            setTimeout(() => {
+              try {
+                finishExam();
+              } catch (error) {
+                console.error('Error auto-finishing exam:', error);
+                toast.error('Failed to auto-submit exam');
+              }
+            }, 100);
+            
+            return prev;
+          }
+          
           return {
             ...prev,
             timeRemaining: prev.timeRemaining - 1
@@ -57,7 +73,9 @@ const ExamCoachPage = () => {
     }
 
     return () => {
-      if (timer) clearInterval(timer);
+      if (timer) {
+        clearInterval(timer);
+      }
     };
   }, [currentExam?.id]); // Only depend on exam ID to prevent unnecessary re-renders
 
@@ -104,6 +122,10 @@ const ExamCoachPage = () => {
 
     setLoading(true);
     try {
+      // Get current user ID
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      const userId = userData.user_id || userData.id || localStorage.getItem('user_id') || 'demo-user';
+
       const response = await agentAPI.examCoachGenerate({
         topic: newExam.topic,
         subject: newExam.subject,
@@ -114,9 +136,40 @@ const ExamCoachPage = () => {
       
       if (response.data.success) {
         toast.success('Exam generated successfully!');
-        // Backend returns {success: true, agent: "exam_coach", action: "exam_created", result: ...}
+        
+        // Create proper question structure for the exam
+        const generatedQuestions = [];
+        
+        // Generate mock questions with proper structure
+        for (let i = 1; i <= newExam.question_count; i++) {
+          const questionType = newExam.question_types[i % newExam.question_types.length];
+          
+          let question = {
+            id: `q_${Date.now()}_${i}`,
+            question: `Question ${i}: What is an important concept in ${newExam.topic}?`,
+            type: questionType,
+            explanation: `This question tests your understanding of ${newExam.topic} concepts.`
+          };
+          
+          if (questionType === 'mcq') {
+            question.options = [
+              `Option A for ${newExam.topic}`,
+              `Option B for ${newExam.topic}`,
+              `Option C for ${newExam.topic}`,
+              `Option D for ${newExam.topic}`
+            ];
+            question.correct_answer = question.options[0]; // First option is correct
+          } else {
+            question.correct_answer = `Sample correct answer for ${newExam.topic} question ${i}`;
+            question.options = null;
+          }
+          
+          generatedQuestions.push(question);
+        }
+        
+        // Create the exam object
         const generatedExam = {
-          id: Date.now().toString(),
+          id: `exam_${Date.now()}`,
           subject: newExam.subject,
           topic: newExam.topic,
           difficulty: newExam.difficulty,
@@ -125,47 +178,72 @@ const ExamCoachPage = () => {
           question_types: newExam.question_types,
           result: response.data.result, // Store the AI result
           created_at: new Date().toISOString(),
-          // Create mock questions if result doesn't contain structured questions
-          questions: response.data.result.questions || [{
-            id: '1',
-            question: 'Sample question based on AI result',
-            type: 'text',
-            options: null,
-            correct_answer: 'Based on AI analysis',
-            explanation: response.data.result
-          }]
+          questions: generatedQuestions
         };
         
-        const updatedExams = [...exams, generatedExam];
-        setExams(updatedExams);
-        localStorage.setItem(`examCoachExams_${userId}`, JSON.stringify(updatedExams));
-        
-        setNewExam({
-          subject: '',
-          topic: '',
-          difficulty: 'intermediate',
-          question_count: 10,
-          time_limit: 30,
-          question_types: ['mcq']
-        });
-        setShowCreateForm(false);
+        // Save to localStorage
+        try {
+          const updatedExams = [...exams, generatedExam];
+          setExams(updatedExams);
+          localStorage.setItem(`examCoachExams_${userId}`, JSON.stringify(updatedExams));
+          
+          // Reset form
+          setNewExam({
+            subject: '',
+            topic: '',
+            difficulty: 'intermediate',
+            question_count: 10,
+            time_limit: 30,
+            question_types: ['mcq']
+          });
+          setShowCreateForm(false);
+          
+        } catch (storageError) {
+          console.error('Failed to save exam to localStorage:', storageError);
+          toast.error('Failed to save exam locally');
+        }
       }
     } catch (error) {
       console.error('Failed to generate exam:', error);
-      toast.error('Failed to generate exam');
+      toast.error('Failed to generate exam. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   const startExam = (exam) => {
-    setCurrentExam({ 
-      ...exam, 
-      startTime: new Date(), 
-      currentQuestion: 0, 
-      answers: {},
-      timeRemaining: exam.time_limit * 60 // Convert to seconds
-    });
+    // Validate exam data before starting
+    if (!exam) {
+      toast.error('Invalid exam data');
+      return;
+    }
+    
+    if (!exam.questions || exam.questions.length === 0) {
+      toast.error('This exam has no questions. Please generate a new exam.');
+      return;
+    }
+    
+    // Validate question structure
+    const invalidQuestions = exam.questions.filter(q => !q.question || !q.id);
+    if (invalidQuestions.length > 0) {
+      toast.error('Some questions are invalid. Please generate a new exam.');
+      return;
+    }
+    
+    try {
+      setCurrentExam({ 
+        ...exam, 
+        startTime: new Date(), 
+        currentQuestion: 0, 
+        answers: {},
+        timeRemaining: exam.time_limit * 60 // Convert to seconds
+      });
+      
+      toast.success('Exam started! Good luck!');
+    } catch (error) {
+      console.error('Failed to start exam:', error);
+      toast.error('Failed to start exam. Please try again.');
+    }
   };
 
   const submitAnswer = (questionIndex, answer) => {
@@ -186,20 +264,29 @@ const ExamCoachPage = () => {
   };
 
   const finishExam = async () => {
-    if (!currentExam) return;
+    if (!currentExam) {
+      toast.error('No active exam found');
+      return;
+    }
     
     setEvaluating(true);
     
     try {
-      // Calculate score by comparing answers
       // Get current user ID
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
       const userId = userData.user_id || userData.id || localStorage.getItem('user_id') || 'demo-user';
+      
+      // Validate exam data
+      if (!currentExam.questions || currentExam.questions.length === 0) {
+        throw new Error('Invalid exam data - no questions found');
+      }
+      
       let correctAnswers = 0;
-      const totalQuestions = currentExam.questions?.length || 0;
+      const totalQuestions = currentExam.questions.length;
       const questionResults = [];
       
-      currentExam.questions?.forEach((question, index) => {
+      // Calculate score by comparing answers
+      currentExam.questions.forEach((question, index) => {
         const userAnswer = currentExam.answers[index];
         const isCorrect = userAnswer === question.correct_answer;
         
@@ -219,7 +306,7 @@ const ExamCoachPage = () => {
       
       const score = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
       
-      // Try to call backend evaluation if available
+      // Try to call backend evaluation if available (optional)
       try {
         const submissionData = {
           exam_id: currentExam.id,
@@ -232,15 +319,19 @@ const ExamCoachPage = () => {
         const evaluationResponse = await agentAPI.examCoachEvaluate(submissionData);
         
         if (evaluationResponse.data.success) {
-          toast.success('Exam evaluated successfully!');
+          console.log('Backend evaluation successful');
         }
       } catch (evaluationError) {
         console.log('Backend evaluation not available, using local evaluation');
       }
       
+      // Calculate time taken
+      const timeElapsed = currentExam.time_limit * 60 - currentExam.timeRemaining;
+      const timeTakenMinutes = Math.round(timeElapsed / 60);
+      
       // Create exam result
       const examResult = {
-        id: Date.now().toString(),
+        id: `result_${Date.now()}`,
         exam_id: currentExam.id,
         subject: currentExam.subject,
         topic: currentExam.topic,
@@ -248,27 +339,47 @@ const ExamCoachPage = () => {
         score: score,
         correct_answers: correctAnswers,
         total_questions: totalQuestions,
-        time_taken: Math.round((currentExam.time_limit * 60 - currentExam.timeRemaining) / 60), // in minutes
+        time_taken: timeTakenMinutes, // in minutes
         completed_at: new Date().toISOString(),
         question_results: questionResults,
         feedback: score >= 80 ? 'Excellent work!' : score >= 60 ? 'Good job! Keep practicing.' : 'Keep studying and try again.'
       };
       
-      // Save to exam history
-      const updatedHistory = [examResult, ...examHistory];
-      setExamHistory(updatedHistory);
-      localStorage.setItem(`examCoachHistory_${userId}`, JSON.stringify(updatedHistory));
-      
-      // Show results
-      toast.success(`Exam completed! Score: ${score}% (${correctAnswers}/${totalQuestions})`);
-      
-      // Exit exam mode
-      setCurrentExam(null);
-      setActiveTab('history'); // Switch to history tab to show results
+      // Save to exam history with error handling
+      try {
+        const currentHistory = [...examHistory];
+        const updatedHistory = [examResult, ...currentHistory];
+        
+        // Update state first
+        setExamHistory(updatedHistory);
+        
+        // Then save to localStorage
+        localStorage.setItem(`examCoachHistory_${userId}`, JSON.stringify(updatedHistory));
+        
+        // Show success message
+        toast.success(`Exam completed! Score: ${score}% (${correctAnswers}/${totalQuestions})`);
+        
+        // Wait a bit before clearing current exam to ensure state updates
+        setTimeout(() => {
+          setCurrentExam(null);
+          setActiveTab('history'); // Switch to history tab to show results
+        }, 500);
+        
+      } catch (saveError) {
+        console.error('Failed to save exam results:', saveError);
+        toast.error('Exam completed but failed to save results locally');
+        
+        // Still show the score and clear the exam
+        toast.success(`Score: ${score}% (${correctAnswers}/${totalQuestions})`);
+        setTimeout(() => {
+          setCurrentExam(null);
+          setActiveTab('history');
+        }, 500);
+      }
       
     } catch (error) {
       console.error('Failed to finish exam:', error);
-      toast.error('Failed to save exam results');
+      toast.error(`Failed to complete exam: ${error.message}`);
     } finally {
       setEvaluating(false);
     }
