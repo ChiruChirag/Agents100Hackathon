@@ -114,6 +114,230 @@ const ExamCoachPage = () => {
     }
   };
 
+  // Helper function to create subject-specific questions
+  const createSubjectSpecificQuestion = (subject, topic, questionNumber, questionType) => {
+    const subjectLower = subject.toLowerCase();
+    const topicLower = topic.toLowerCase();
+    
+    // Math/Algebra questions
+    if (subjectLower.includes('math') || subjectLower.includes('algebra')) {
+      const algebraQuestions = [
+        {
+          question: "What is the solution to the equation 2x + 5 = 13?",
+          options: ["x = 4", "x = 9", "x = 3", "x = 6"],
+          correct_answer: "x = 4",
+          explanation: "Subtract 5 from both sides: 2x = 8, then divide by 2: x = 4"
+        },
+        {
+          question: "Which property allows us to write a(b + c) = ab + ac?",
+          options: ["Distributive Property", "Commutative Property", "Associative Property", "Identity Property"],
+          correct_answer: "Distributive Property",
+          explanation: "The distributive property allows multiplication to be distributed over addition."
+        },
+        {
+          question: "What is the slope of the line y = 3x - 7?",
+          options: ["3", "-7", "1/3", "7"],
+          correct_answer: "3",
+          explanation: "In slope-intercept form y = mx + b, the coefficient of x (m) is the slope."
+        },
+        {
+          question: "Simplify: (x²)(x³)",
+          options: ["x⁵", "x⁶", "x⁵", "2x⁵"],
+          correct_answer: "x⁵",
+          explanation: "When multiplying powers with the same base, add the exponents: x² × x³ = x^(2+3) = x⁵"
+        },
+        {
+          question: "What is the y-intercept of the line 2x + 3y = 12?",
+          options: ["(0, 4)", "(0, 6)", "(6, 0)", "(4, 0)"],
+          correct_answer: "(0, 4)",
+          explanation: "Set x = 0: 2(0) + 3y = 12, so 3y = 12, y = 4. The y-intercept is (0, 4)."
+        }
+      ];
+      
+      const question = algebraQuestions[questionNumber % algebraQuestions.length];
+      return {
+        id: `q_${Date.now()}_${questionNumber}`,
+        type: questionType,
+        question: question.question,
+        options: questionType === 'mcq' ? question.options : null,
+        correct_answer: question.correct_answer,
+        explanation: question.explanation
+      };
+    }
+    
+    // Biology questions
+    else if (subjectLower.includes('biology')) {
+      const biologyQuestions = [
+        {
+          question: "What is the powerhouse of the cell?",
+          options: ["Mitochondria", "Nucleus", "Ribosome", "Endoplasmic Reticulum"],
+          correct_answer: "Mitochondria",
+          explanation: "Mitochondria produce ATP through cellular respiration, providing energy for cellular processes."
+        },
+        {
+          question: "Which process converts light energy into chemical energy?",
+          options: ["Photosynthesis", "Cellular Respiration", "Fermentation", "Glycolysis"],
+          correct_answer: "Photosynthesis",
+          explanation: "Photosynthesis uses light energy to convert CO₂ and water into glucose and oxygen."
+        },
+        {
+          question: "What are the building blocks of proteins?",
+          options: ["Amino acids", "Nucleotides", "Fatty acids", "Monosaccharides"],
+          correct_answer: "Amino acids",
+          explanation: "Proteins are polymers made up of amino acid monomers linked by peptide bonds."
+        },
+        {
+          question: "Which organelle contains the cell's genetic material?",
+          options: ["Nucleus", "Mitochondria", "Chloroplast", "Ribosome"],
+          correct_answer: "Nucleus",
+          explanation: "The nucleus contains chromosomes made of DNA, which stores genetic information."
+        },
+        {
+          question: "What is the basic unit of life?",
+          options: ["Cell", "Tissue", "Organ", "Molecule"],
+          correct_answer: "Cell",
+          explanation: "The cell is the smallest structural and functional unit of all living organisms."
+        }
+      ];
+      
+      const question = biologyQuestions[questionNumber % biologyQuestions.length];
+      return {
+        id: `q_${Date.now()}_${questionNumber}`,
+        type: questionType,
+        question: question.question,
+        options: questionType === 'mcq' ? question.options : null,
+        correct_answer: question.correct_answer,
+        explanation: question.explanation
+      };
+    }
+    
+    // Chemistry questions
+    else if (subjectLower.includes('chemistry')) {
+      const chemistryQuestions = [
+        {
+          question: "What is the chemical symbol for gold?",
+          options: ["Au", "Ag", "Cu", "Fe"],
+          correct_answer: "Au",
+          explanation: "Au comes from the Latin word 'aurum' meaning gold."
+        },
+        {
+          question: "How many electrons can the first shell hold?",
+          options: ["2", "8", "18", "32"],
+          correct_answer: "2",
+          explanation: "The first electron shell (K shell) can hold a maximum of 2 electrons."
+        },
+        {
+          question: "What type of bond forms between a metal and a non-metal?",
+          options: ["Ionic bond", "Covalent bond", "Metallic bond", "Hydrogen bond"],
+          correct_answer: "Ionic bond",
+          explanation: "Metals lose electrons and non-metals gain electrons, forming ionic bonds."
+        },
+        {
+          question: "What is the pH of pure water at 25°C?",
+          options: ["7", "0", "14", "1"],
+          correct_answer: "7",
+          explanation: "Pure water is neutral with a pH of 7 at standard temperature."
+        },
+        {
+          question: "Which gas makes up about 78% of Earth's atmosphere?",
+          options: ["Nitrogen", "Oxygen", "Carbon dioxide", "Argon"],
+          correct_answer: "Nitrogen",
+          explanation: "Nitrogen (N₂) comprises approximately 78% of the atmosphere."
+        }
+      ];
+      
+      const question = chemistryQuestions[questionNumber % chemistryQuestions.length];
+      return {
+        id: `q_${Date.now()}_${questionNumber}`,
+        type: questionType,
+        question: question.question,
+        options: questionType === 'mcq' ? question.options : null,
+        correct_answer: question.correct_answer,
+        explanation: question.explanation
+      };
+    }
+    
+    // Physics questions
+    else if (subjectLower.includes('physics')) {
+      const physicsQuestions = [
+        {
+          question: "What is the unit of force in the SI system?",
+          options: ["Newton", "Joule", "Watt", "Pascal"],
+          correct_answer: "Newton",
+          explanation: "The Newton (N) is the SI unit of force, defined as kg⋅m/s²."
+        },
+        {
+          question: "What is the speed of light in vacuum?",
+          options: ["3.00 × 10⁸ m/s", "3.00 × 10⁶ m/s", "3.00 × 10¹⁰ m/s", "3.00 × 10⁴ m/s"],
+          correct_answer: "3.00 × 10⁸ m/s",
+          explanation: "The speed of light in vacuum is approximately 299,792,458 m/s or 3.00 × 10⁸ m/s."
+        },
+        {
+          question: "According to Newton's first law, an object at rest will:",
+          options: ["Stay at rest unless acted upon by a force", "Always accelerate", "Move at constant velocity", "Eventually stop"],
+          correct_answer: "Stay at rest unless acted upon by a force",
+          explanation: "Newton's first law states that objects remain in their state of motion unless acted upon by an unbalanced force."
+        },
+        {
+          question: "What type of energy does a moving object possess?",
+          options: ["Kinetic energy", "Potential energy", "Thermal energy", "Chemical energy"],
+          correct_answer: "Kinetic energy",
+          explanation: "Kinetic energy is the energy of motion, calculated as KE = ½mv²."
+        },
+        {
+          question: "What happens to the wavelength of light as its frequency increases?",
+          options: ["Decreases", "Increases", "Stays the same", "Becomes zero"],
+          correct_answer: "Decreases",
+          explanation: "Wavelength and frequency are inversely related: λ = c/f, where c is the speed of light."
+        }
+      ];
+      
+      const question = physicsQuestions[questionNumber % physicsQuestions.length];
+      return {
+        id: `q_${Date.now()}_${questionNumber}`,
+        type: questionType,
+        question: question.question,
+        options: questionType === 'mcq' ? question.options : null,
+        correct_answer: question.correct_answer,
+        explanation: question.explanation
+      };
+    }
+    
+    // Generic fallback for other subjects
+    else {
+      const genericQuestions = [
+        {
+          question: `What is a fundamental principle in ${topic}?`,
+          options: [`Understanding core concepts`, `Memorizing definitions`, `Ignoring applications`, `Avoiding practice`],
+          correct_answer: `Understanding core concepts`,
+          explanation: `Understanding fundamental principles is key to mastering ${topic}.`
+        },
+        {
+          question: `Which approach is most effective for learning ${topic}?`,
+          options: [`Active practice and application`, `Passive reading only`, `Avoiding difficult problems`, `Skipping foundational concepts`],
+          correct_answer: `Active practice and application`,
+          explanation: `Active engagement with the material leads to better understanding and retention.`
+        },
+        {
+          question: `What is the best way to apply ${topic} knowledge?`,
+          options: [`Solve real-world problems`, `Memorize formulas only`, `Avoid challenging questions`, `Study in isolation`],
+          correct_answer: `Solve real-world problems`,
+          explanation: `Applying knowledge to real-world scenarios helps reinforce learning and understanding.`
+        }
+      ];
+      
+      const question = genericQuestions[questionNumber % genericQuestions.length];
+      return {
+        id: `q_${Date.now()}_${questionNumber}`,
+        type: questionType,
+        question: question.question,
+        options: questionType === 'mcq' ? question.options : null,
+        correct_answer: question.correct_answer,
+        explanation: question.explanation
+      };
+    }
+  };
+
   const generateExam = async () => {
     if (!newExam.subject || !newExam.topic) {
       toast.error('Please fill in subject and topic');
@@ -142,6 +366,8 @@ const ExamCoachPage = () => {
         
         try {
           console.log('Backend response:', response.data); // Debug log
+          console.log('Response result type:', typeof response.data.result); // Debug log
+          console.log('Response result content:', response.data.result); // Debug log
           
           // The backend should return a structured JSON with questions
           const result = response.data.result;
@@ -166,6 +392,34 @@ const ExamCoachPage = () => {
             
             console.log('Processed questions:', generatedQuestions); // Debug log
             
+          } else if (typeof result === 'string' && result.includes('{')) {
+            // Try to parse JSON from string
+            console.log('Trying to parse JSON from string result...'); // Debug log
+            try {
+              const jsonStart = result.indexOf('{');
+              const jsonEnd = result.lastIndexOf('}') + 1;
+              const jsonStr = result.substring(jsonStart, jsonEnd);
+              const parsedResult = JSON.parse(jsonStr);
+              
+              if (parsedResult.questions && Array.isArray(parsedResult.questions)) {
+                console.log('Successfully parsed JSON questions:', parsedResult.questions); // Debug log
+                
+                generatedQuestions = parsedResult.questions.slice(0, newExam.question_count).map((question, index) => {
+                  const questionType = newExam.question_types[index % newExam.question_types.length];
+                  
+                  return {
+                    id: question.id || `q_${Date.now()}_${index + 1}`,
+                    question: question.question,
+                    type: questionType,
+                    options: question.options || null,
+                    correct_answer: question.correct_answer,
+                    explanation: question.explanation || `This question tests your understanding of ${newExam.topic}.`
+                  };
+                });
+              }
+            } catch (jsonParseError) {
+              console.log('Failed to parse JSON from string:', jsonParseError);
+            }
           } else {
             // Fallback: try to parse if result is a string (old behavior)
             const aiResult = typeof result === 'string' ? result : JSON.stringify(result);
@@ -210,14 +464,8 @@ const ExamCoachPage = () => {
                       question.correct_answer = question.options[0];
                     }
                   } else {
-                    // Final fallback: Generate basic options
-                    question.options = [
-                      `Correct answer for ${newExam.topic}`,
-                      `Incorrect option 1`,
-                      `Incorrect option 2`,
-                      `Incorrect option 3`
-                    ];
-                    question.correct_answer = question.options[0];
+                    // Create subject-specific fallback questions instead of generic ones
+                    question = createSubjectSpecificQuestion(newExam.subject, newExam.topic, index + 1, questionType);
                   }
                 } else {
                   // For text questions, try to extract answer from the AI response
@@ -234,34 +482,16 @@ const ExamCoachPage = () => {
           console.log('Could not parse AI questions, using fallback:', parseError);
         }
         
-        // Fallback: Create structured questions if parsing failed
+        // If we still don't have questions, create subject-specific ones
         if (generatedQuestions.length === 0) {
-          for (let i = 1; i <= newExam.question_count; i++) {
+          console.log('Creating subject-specific fallback questions...');
+          for (let i = 0; i < newExam.question_count; i++) {
             const questionType = newExam.question_types[i % newExam.question_types.length];
-            
-            let question = {
-              id: `q_${Date.now()}_${i}`,
-              question: `Question ${i}: What is an important concept in ${newExam.topic}?`,
-              type: questionType,
-              explanation: `This question tests your understanding of ${newExam.topic} concepts.`
-            };
-            
-            if (questionType === 'mcq') {
-              question.options = [
-                `Correct answer related to ${newExam.topic}`,
-                `Incorrect option A for ${newExam.topic}`,
-                `Incorrect option B for ${newExam.topic}`,
-                `Incorrect option C for ${newExam.topic}`
-              ];
-              question.correct_answer = question.options[0];
-            } else {
-              question.correct_answer = `Sample correct answer for ${newExam.topic} question ${i}`;
-              question.options = null;
-            }
-            
-            generatedQuestions.push(question);
+            generatedQuestions.push(createSubjectSpecificQuestion(newExam.subject, newExam.topic, i + 1, questionType));
           }
         }
+        
+        console.log('Final generated questions:', generatedQuestions); // Debug log
         
         // Create the exam object
         const generatedExam = {
