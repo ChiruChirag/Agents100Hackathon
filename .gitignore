@@ -39,8 +39,6 @@ yarn-debug.log*
 yarn-error.log*
 
 # EduVerse Backend specific
-EduVerse_Backend/chromadb/
-EduVerse_Backend/hackback/
 EduVerse_Backend/.env
 EduVerse_Backend/.env.*
 EduVerse_Backend/chroma_db/
@@ -50,6 +48,18 @@ EduVerse_Backend/chroma/
 *.db
 *.sqlite
 *.sqlite3
-chroma/
+vector_db/
+
+# EduVerse Backend - Exclude large/generated folders
+EduVerse_Backend/chromadb/
+EduVerse_Backend/hackback/
+EduVerse_Backend/chroma_db/
+EduVerse_Backend/chroma/
+
+# Vector databases and generated files
 chromadb/
+hackback/
+*.db
+*.sqlite
+*.sqlite3
 vector_db/
