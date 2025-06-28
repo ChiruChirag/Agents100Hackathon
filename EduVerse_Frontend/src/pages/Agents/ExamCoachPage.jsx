@@ -230,8 +230,48 @@ const ExamCoachPage = () => {
           } else {
             console.log('❌ Unexpected result format:', typeof result);
             console.log('❌ Result value:', result);
-            toast.error('Backend returned unexpected format. Check console for details.');
-            return;
+            console.log('❌ Result keys:', Object.keys(result || {}));
+            
+            // The backend might return the questions directly in the result object
+            // Let's check if it has the expected structure from the backend
+            if (result && typeof result === 'object') {
+              console.log('🔍 Checking for backend structure...');
+              console.log('result.action:', result.action);
+              console.log('result.questions:', result.questions);
+              console.log('result.exam_id:', result.exam_id);
+              
+              // This is the correct structure returned by the backend
+              if (result.questions && Array.isArray(result.questions)) {
+                console.log('✅ Found questions in backend result structure!');
+                console.log('Questions array length:', result.questions.length);
+                console.log('Questions array content:', result.questions);
+                
+                generatedQuestions = result.questions.map((question, index) => {
+                  const questionType = newExam.question_types[index % newExam.question_types.length];
+                  
+                  console.log(`Processing question ${index + 1}:`, question);
+                  
+                  return {
+                    id: question.id || `q_${Date.now()}_${index + 1}`,
+                    question: question.question,
+                    type: question.type || questionType,
+                    options: question.options || null,
+                    correct_answer: question.correct_answer,
+                    explanation: question.explanation || `This question tests your understanding of ${newExam.topic}.`
+                  };
+                });
+                
+                console.log('✅ Successfully processed backend questions!');
+                console.log('✅ Final processed questions count:', generatedQuestions.length);
+              } else {
+                console.log('❌ No questions array found in result object');
+                toast.error('Backend returned data but no questions found. Check console for details.');
+                return;
+              }
+            } else {
+              toast.error('Backend returned unexpected format. Check console for details.');
+              return;
+            }
           }
         } catch (parseError) {
           console.log('❌ Could not parse AI questions:', parseError);
