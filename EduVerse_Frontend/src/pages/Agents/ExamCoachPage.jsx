@@ -123,8 +123,16 @@ const ExamCoachPage = () => {
     setLoading(true);
     
     // Debug log to track question_count being sent
+    console.log('=== EXAM GENERATION DEBUG START ===');
     console.log('Frontend sending question_count:', newExam.question_count);
     console.log('Complete newExam object:', newExam);
+    console.log('API endpoint will be called with:', {
+      topic: newExam.topic,
+      subject: newExam.subject,
+      question_count: newExam.question_count,
+      difficulty: newExam.difficulty,
+      question_types: newExam.question_types
+    });
 
     try {
       // Get current user ID
@@ -139,27 +147,34 @@ const ExamCoachPage = () => {
         question_types: newExam.question_types
       });
       
+      console.log('=== BACKEND RESPONSE ANALYSIS ===');
+      console.log('Raw response object:', response);
+      console.log('response.data:', response.data);
+      console.log('response.data.success:', response.data.success);
+      console.log('response.data.result type:', typeof response.data.result);
+      console.log('response.data.result content:', response.data.result);
+      
       if (response.data.success) {
-        console.log('Backend response:', response.data); // Debug log
-        
         // Parse the AI-generated questions from the backend response
         let generatedQuestions = [];
         
         try {
-          console.log('Backend response:', response.data); // Debug log
-          console.log('Response result type:', typeof response.data.result); // Debug log
-          console.log('Response result content:', response.data.result); // Debug log
-          
-          // The backend should return a structured JSON with questions
           const result = response.data.result;
+          console.log('=== PARSING BACKEND RESULT ===');
+          console.log('Result type:', typeof result);
+          console.log('Result content:', result);
           
           // Check if we have a structured result with questions
           if (result && typeof result === 'object' && result.questions && Array.isArray(result.questions)) {
-            console.log('Found structured questions:', result.questions); // Debug log
+            console.log('✅ Found structured questions array');
+            console.log('Questions array length:', result.questions.length);
+            console.log('Questions array content:', result.questions);
             
-            // Use the questions directly from the backend
-            generatedQuestions = result.questions.slice(0, newExam.question_count).map((question, index) => {
+            // Use ALL questions from the backend response
+            generatedQuestions = result.questions.map((question, index) => {
               const questionType = newExam.question_types[index % newExam.question_types.length];
+              
+              console.log(`Processing question ${index + 1}:`, question);
               
               return {
                 id: question.id || `q_${Date.now()}_${index + 1}`,
@@ -171,55 +186,76 @@ const ExamCoachPage = () => {
               };
             });
             
-            console.log('Processed questions:', generatedQuestions); // Debug log
+            console.log('✅ Processed questions count:', generatedQuestions.length);
+            console.log('✅ Final processed questions:', generatedQuestions);
             
-          } else if (typeof result === 'string' && result.includes('{')) {
-            // Try to parse JSON from string
-            console.log('Trying to parse JSON from string result...'); // Debug log
+          } else if (typeof result === 'string') {
+            console.log('⚠️ Result is a string, attempting to parse JSON...');
+            console.log('String result:', result);
+            
             try {
-              const jsonStart = result.indexOf('{');
-              const jsonEnd = result.lastIndexOf('}') + 1;
-              const jsonStr = result.substring(jsonStart, jsonEnd);
-              const parsedResult = JSON.parse(jsonStr);
-              
-              if (parsedResult.questions && Array.isArray(parsedResult.questions)) {
-                console.log('Successfully parsed JSON questions:', parsedResult.questions); // Debug log
+              // Try to find and parse JSON from string
+              const jsonMatch = result.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                const jsonStr = jsonMatch[0];
+                console.log('Found JSON string:', jsonStr);
+                const parsedResult = JSON.parse(jsonStr);
+                console.log('Parsed JSON result:', parsedResult);
                 
-                generatedQuestions = parsedResult.questions.slice(0, newExam.question_count).map((question, index) => {
-                  const questionType = newExam.question_types[index % newExam.question_types.length];
+                if (parsedResult.questions && Array.isArray(parsedResult.questions)) {
+                  console.log('✅ Successfully found questions in parsed JSON');
+                  console.log('Parsed questions count:', parsedResult.questions.length);
                   
-                  return {
-                    id: question.id || `q_${Date.now()}_${index + 1}`,
-                    question: question.question,
-                    type: questionType,
-                    options: question.options || null,
-                    correct_answer: question.correct_answer,
-                    explanation: question.explanation || `This question tests your understanding of ${newExam.topic}.`
-                  };
-                });
+                  generatedQuestions = parsedResult.questions.map((question, index) => {
+                    const questionType = newExam.question_types[index % newExam.question_types.length];
+                    
+                    return {
+                      id: question.id || `q_${Date.now()}_${index + 1}`,
+                      question: question.question,
+                      type: questionType,
+                      options: question.options || null,
+                      correct_answer: question.correct_answer,
+                      explanation: question.explanation || `This question tests your understanding of ${newExam.topic}.`
+                    };
+                  });
+                  
+                  console.log('✅ Successfully processed questions from string JSON');
+                }
+              } else {
+                console.log('❌ No JSON found in string result');
               }
             } catch (jsonParseError) {
-              console.log('Failed to parse JSON from string:', jsonParseError);
+              console.log('❌ Failed to parse JSON from string:', jsonParseError);
             }
           } else {
-            console.log('Unexpected result format. Cannot parse questions.');
-            toast.error('Backend returned unexpected format. Please check console for details.');
+            console.log('❌ Unexpected result format:', typeof result);
+            console.log('❌ Result value:', result);
+            toast.error('Backend returned unexpected format. Check console for details.');
             return;
           }
         } catch (parseError) {
-          console.log('Could not parse AI questions:', parseError);
+          console.log('❌ Could not parse AI questions:', parseError);
           toast.error('Failed to parse exam questions from backend response.');
           return;
         }
         
+        console.log('=== FINAL QUESTION COUNT CHECK ===');
+        console.log('Generated questions count:', generatedQuestions.length);
+        console.log('Expected question count:', newExam.question_count);
+        
         // If we still don't have questions, show error
         if (generatedQuestions.length === 0) {
-          console.log('No questions were generated from backend response.');
+          console.log('❌ No questions were generated from backend response.');
           toast.error('Backend did not return any valid questions. Please try again.');
           return;
         }
         
-        console.log('Final generated questions:', generatedQuestions); // Debug log
+        if (generatedQuestions.length !== newExam.question_count) {
+          console.log(`⚠️ Question count mismatch! Expected: ${newExam.question_count}, Got: ${generatedQuestions.length}`);
+          toast.warning(`Generated ${generatedQuestions.length} questions instead of ${newExam.question_count}`);
+        }
+        
+        console.log('✅ Final generated questions:', generatedQuestions);
         
         // Create the exam object
         const generatedExam = {
@@ -227,7 +263,7 @@ const ExamCoachPage = () => {
           subject: newExam.subject,
           topic: newExam.topic,
           difficulty: newExam.difficulty,
-          question_count: newExam.question_count,
+          question_count: generatedQuestions.length, // Use actual count
           time_limit: newExam.time_limit,
           question_types: newExam.question_types,
           ai_result: response.data.result, // Store the raw AI result
@@ -235,13 +271,18 @@ const ExamCoachPage = () => {
           questions: generatedQuestions
         };
         
+        console.log('=== SAVING EXAM ===');
+        console.log('Final exam object:', generatedExam);
+        
         // Save to localStorage
         try {
           const updatedExams = [...exams, generatedExam];
           setExams(updatedExams);
           localStorage.setItem(`examCoachExams_${userId}`, JSON.stringify(updatedExams));
           
-          toast.success('Exam generated successfully!');
+          toast.success(`Exam generated successfully with ${generatedQuestions.length} questions!`);
+          console.log('✅ Exam saved successfully');
+          console.log('=== EXAM GENERATION DEBUG END ===');
           
           // Reset form
           setNewExam({
@@ -255,7 +296,7 @@ const ExamCoachPage = () => {
           setShowCreateForm(false);
           
         } catch (storageError) {
-          console.error('Failed to save exam to localStorage:', storageError);
+          console.error('❌ Failed to save exam to localStorage:', storageError);
           toast.error('Exam generated but failed to save locally');
         }
         
@@ -263,7 +304,8 @@ const ExamCoachPage = () => {
         throw new Error('Backend did not return success');
       }
     } catch (error) {
-      console.error('Failed to generate exam:', error);
+      console.error('❌ Failed to generate exam:', error);
+      console.log('=== EXAM GENERATION DEBUG END (ERROR) ===');
       
       // Show more specific error messages
       if (error.response?.status === 429) {
