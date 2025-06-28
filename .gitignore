@@ -37,3 +37,19 @@ logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# EduVerse Backend specific
+EduVerse_Backend/chromadb/
+EduVerse_Backend/hackback/
+EduVerse_Backend/.env
+EduVerse_Backend/.env.*
+EduVerse_Backend/chroma_db/
+EduVerse_Backend/chroma/
+
+# Vector databases
+*.db
+*.sqlite
+*.sqlite3
+chroma/
+chromadb/
+vector_db/
