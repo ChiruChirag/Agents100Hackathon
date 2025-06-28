@@ -145,15 +145,17 @@ const ExamCoachPage = () => {
           const aiResult = response.data.result;
           console.log('AI Result:', aiResult); // Debug log
           
-          // Try to extract questions from the AI response
-          // This is a simple parser - adjust based on your backend's actual output format
-          const questionMatches = aiResult.match(/(?:Question \d+:?|Q\d+:?|\d+\.)([^?]+\?)/gi);
+          // Improved parser to extract questions and options
+          // Split by question numbers and clean up
+          const questionBlocks = aiResult.split(/(?=(?:Question \d+|Q\d+|\d+\.))/).filter(block => block.trim());
           
-          if (questionMatches && questionMatches.length > 0) {
-            console.log('Found questions:', questionMatches); // Debug log
-            generatedQuestions = questionMatches.slice(0, newExam.question_count).map((match, index) => {
-              // Clean up the question text
-              const questionText = match.replace(/^(?:Question \d+:?|Q\d+:?|\d+\.)\s*/i, '').trim();
+          if (questionBlocks && questionBlocks.length > 0) {
+            console.log('Found question blocks:', questionBlocks); // Debug log
+            
+            generatedQuestions = questionBlocks.slice(0, newExam.question_count).map((block, index) => {
+              // Extract question text (everything before options)
+              const questionMatch = block.match(/(?:Question \d+:?|Q\d+:?|\d+\.)\s*([^A-D]*?)(?=[A-D]\)|$)/s);
+              const questionText = questionMatch ? questionMatch[1].trim().replace(/\?$/, '') + '?' : `Question ${index + 1} from ${newExam.topic}`;
               
               const questionType = newExam.question_types[index % newExam.question_types.length];
               
@@ -165,16 +167,38 @@ const ExamCoachPage = () => {
               };
               
               if (questionType === 'mcq') {
-                // Generate reasonable MCQ options based on the topic
-                question.options = [
-                  `Option A related to ${newExam.topic}`,
-                  `Option B related to ${newExam.topic}`,
-                  `Option C related to ${newExam.topic}`,
-                  `Option D related to ${newExam.topic}`
-                ];
-                question.correct_answer = question.options[0];
+                // Extract options (A), B), C), D) format
+                const optionMatches = block.match(/[A-D]\)\s*([^\n\r]+)/g);
+                
+                if (optionMatches && optionMatches.length >= 2) {
+                  question.options = optionMatches.map(match => 
+                    match.replace(/^[A-D]\)\s*/, '').trim()
+                  );
+                  
+                  // Try to find the correct answer in the text
+                  const correctAnswerMatch = block.match(/(?:Answer|Correct|Solution)[:\s]*([A-D])/i);
+                  if (correctAnswerMatch) {
+                    const correctLetter = correctAnswerMatch[1].toUpperCase();
+                    const correctIndex = correctLetter.charCodeAt(0) - 'A'.charCodeAt(0);
+                    question.correct_answer = question.options[correctIndex] || question.options[0];
+                  } else {
+                    // Default to first option if no answer is specified
+                    question.correct_answer = question.options[0];
+                  }
+                } else {
+                  // Fallback: Generate basic options if parsing failed
+                  question.options = [
+                    `Correct answer for ${newExam.topic}`,
+                    `Incorrect option 1`,
+                    `Incorrect option 2`,
+                    `Incorrect option 3`
+                  ];
+                  question.correct_answer = question.options[0];
+                }
               } else {
-                question.correct_answer = `Sample answer for: ${questionText}`;
+                // For text questions, try to extract answer from the AI response
+                const answerMatch = block.match(/(?:Answer|Solution)[:\s]*([^\n\r]+)/i);
+                question.correct_answer = answerMatch ? answerMatch[1].trim() : `Sample answer for ${newExam.topic}`;
                 question.options = null;
               }
               
