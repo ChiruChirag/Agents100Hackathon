@@ -141,69 +141,94 @@ const ExamCoachPage = () => {
         let generatedQuestions = [];
         
         try {
-          // The backend returns the result as text, we need to parse it
-          const aiResult = response.data.result;
-          console.log('AI Result:', aiResult); // Debug log
+          console.log('Backend response:', response.data); // Debug log
           
-          // Improved parser to extract questions and options
-          // Split by question numbers and clean up
-          const questionBlocks = aiResult.split(/(?=(?:Question \d+|Q\d+|\d+\.))/).filter(block => block.trim());
+          // The backend should return a structured JSON with questions
+          const result = response.data.result;
           
-          if (questionBlocks && questionBlocks.length > 0) {
-            console.log('Found question blocks:', questionBlocks); // Debug log
+          // Check if we have a structured result with questions
+          if (result && typeof result === 'object' && result.questions && Array.isArray(result.questions)) {
+            console.log('Found structured questions:', result.questions); // Debug log
             
-            generatedQuestions = questionBlocks.slice(0, newExam.question_count).map((block, index) => {
-              // Extract question text (everything before options)
-              const questionMatch = block.match(/(?:Question \d+:?|Q\d+:?|\d+\.)\s*([^A-D]*?)(?=[A-D]\)|$)/s);
-              const questionText = questionMatch ? questionMatch[1].trim().replace(/\?$/, '') + '?' : `Question ${index + 1} from ${newExam.topic}`;
-              
+            // Use the questions directly from the backend
+            generatedQuestions = result.questions.slice(0, newExam.question_count).map((question, index) => {
               const questionType = newExam.question_types[index % newExam.question_types.length];
               
-              let question = {
-                id: `q_${Date.now()}_${index + 1}`,
-                question: questionText,
+              return {
+                id: question.id || `q_${Date.now()}_${index + 1}`,
+                question: question.question,
                 type: questionType,
-                explanation: `This question tests your understanding of ${newExam.topic}.`
+                options: question.options || null,
+                correct_answer: question.correct_answer,
+                explanation: question.explanation || `This question tests your understanding of ${newExam.topic}.`
               };
+            });
+            
+            console.log('Processed questions:', generatedQuestions); // Debug log
+            
+          } else {
+            // Fallback: try to parse if result is a string (old behavior)
+            const aiResult = typeof result === 'string' ? result : JSON.stringify(result);
+            console.log('AI Result as string:', aiResult); // Debug log
+            
+            // Improved parser to extract questions and options from text
+            const questionBlocks = aiResult.split(/(?=(?:Question \d+|Q\d+|\d+\.))/).filter(block => block.trim());
+            
+            if (questionBlocks && questionBlocks.length > 0) {
+              console.log('Found question blocks:', questionBlocks); // Debug log
               
-              if (questionType === 'mcq') {
-                // Extract options (A), B), C), D) format
-                const optionMatches = block.match(/[A-D]\)\s*([^\n\r]+)/g);
+              generatedQuestions = questionBlocks.slice(0, newExam.question_count).map((block, index) => {
+                // Extract question text (everything before options)
+                const questionMatch = block.match(/(?:Question \d+:?|Q\d+:?|\d+\.)\s*([^A-D]*?)(?=[A-D]\)|$)/s);
+                const questionText = questionMatch ? questionMatch[1].trim().replace(/\?$/, '') + '?' : `Question ${index + 1} from ${newExam.topic}`;
                 
-                if (optionMatches && optionMatches.length >= 2) {
-                  question.options = optionMatches.map(match => 
-                    match.replace(/^[A-D]\)\s*/, '').trim()
-                  );
+                const questionType = newExam.question_types[index % newExam.question_types.length];
+                
+                let question = {
+                  id: `q_${Date.now()}_${index + 1}`,
+                  question: questionText,
+                  type: questionType,
+                  explanation: `This question tests your understanding of ${newExam.topic}.`
+                };
+                
+                if (questionType === 'mcq') {
+                  // Extract options (A), B), C), D) format
+                  const optionMatches = block.match(/[A-D]\)\s*([^\n\r]+)/g);
                   
-                  // Try to find the correct answer in the text
-                  const correctAnswerMatch = block.match(/(?:Answer|Correct|Solution)[:\s]*([A-D])/i);
-                  if (correctAnswerMatch) {
-                    const correctLetter = correctAnswerMatch[1].toUpperCase();
-                    const correctIndex = correctLetter.charCodeAt(0) - 'A'.charCodeAt(0);
-                    question.correct_answer = question.options[correctIndex] || question.options[0];
+                  if (optionMatches && optionMatches.length >= 2) {
+                    question.options = optionMatches.map(match => 
+                      match.replace(/^[A-D]\)\s*/, '').trim()
+                    );
+                    
+                    // Try to find the correct answer in the text
+                    const correctAnswerMatch = block.match(/(?:Answer|Correct|Solution)[:\s]*([A-D])/i);
+                    if (correctAnswerMatch) {
+                      const correctLetter = correctAnswerMatch[1].toUpperCase();
+                      const correctIndex = correctLetter.charCodeAt(0) - 'A'.charCodeAt(0);
+                      question.correct_answer = question.options[correctIndex] || question.options[0];
+                    } else {
+                      question.correct_answer = question.options[0];
+                    }
                   } else {
-                    // Default to first option if no answer is specified
+                    // Final fallback: Generate basic options
+                    question.options = [
+                      `Correct answer for ${newExam.topic}`,
+                      `Incorrect option 1`,
+                      `Incorrect option 2`,
+                      `Incorrect option 3`
+                    ];
                     question.correct_answer = question.options[0];
                   }
                 } else {
-                  // Fallback: Generate basic options if parsing failed
-                  question.options = [
-                    `Correct answer for ${newExam.topic}`,
-                    `Incorrect option 1`,
-                    `Incorrect option 2`,
-                    `Incorrect option 3`
-                  ];
-                  question.correct_answer = question.options[0];
+                  // For text questions, try to extract answer from the AI response
+                  const answerMatch = block.match(/(?:Answer|Solution)[:\s]*([^\n\r]+)/i);
+                  question.correct_answer = answerMatch ? answerMatch[1].trim() : `Sample answer for ${newExam.topic}`;
+                  question.options = null;
                 }
-              } else {
-                // For text questions, try to extract answer from the AI response
-                const answerMatch = block.match(/(?:Answer|Solution)[:\s]*([^\n\r]+)/i);
-                question.correct_answer = answerMatch ? answerMatch[1].trim() : `Sample answer for ${newExam.topic}`;
-                question.options = null;
-              }
-              
-              return question;
-            });
+                
+                return question;
+              });
+            }
           }
         } catch (parseError) {
           console.log('Could not parse AI questions, using fallback:', parseError);
