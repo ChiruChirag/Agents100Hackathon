@@ -135,36 +135,83 @@ const ExamCoachPage = () => {
       });
       
       if (response.data.success) {
-        toast.success('Exam generated successfully!');
+        console.log('Backend response:', response.data); // Debug log
         
-        // Create proper question structure for the exam
-        const generatedQuestions = [];
+        // Parse the AI-generated questions from the backend response
+        let generatedQuestions = [];
         
-        // Generate mock questions with proper structure
-        for (let i = 1; i <= newExam.question_count; i++) {
-          const questionType = newExam.question_types[i % newExam.question_types.length];
+        try {
+          // The backend returns the result as text, we need to parse it
+          const aiResult = response.data.result;
+          console.log('AI Result:', aiResult); // Debug log
           
-          let question = {
-            id: `q_${Date.now()}_${i}`,
-            question: `Question ${i}: What is an important concept in ${newExam.topic}?`,
-            type: questionType,
-            explanation: `This question tests your understanding of ${newExam.topic} concepts.`
-          };
+          // Try to extract questions from the AI response
+          // This is a simple parser - adjust based on your backend's actual output format
+          const questionMatches = aiResult.match(/(?:Question \d+:?|Q\d+:?|\d+\.)([^?]+\?)/gi);
           
-          if (questionType === 'mcq') {
-            question.options = [
-              `Option A for ${newExam.topic}`,
-              `Option B for ${newExam.topic}`,
-              `Option C for ${newExam.topic}`,
-              `Option D for ${newExam.topic}`
-            ];
-            question.correct_answer = question.options[0]; // First option is correct
-          } else {
-            question.correct_answer = `Sample correct answer for ${newExam.topic} question ${i}`;
-            question.options = null;
+          if (questionMatches && questionMatches.length > 0) {
+            console.log('Found questions:', questionMatches); // Debug log
+            generatedQuestions = questionMatches.slice(0, newExam.question_count).map((match, index) => {
+              // Clean up the question text
+              const questionText = match.replace(/^(?:Question \d+:?|Q\d+:?|\d+\.)\s*/i, '').trim();
+              
+              const questionType = newExam.question_types[index % newExam.question_types.length];
+              
+              let question = {
+                id: `q_${Date.now()}_${index + 1}`,
+                question: questionText,
+                type: questionType,
+                explanation: `This question tests your understanding of ${newExam.topic}.`
+              };
+              
+              if (questionType === 'mcq') {
+                // Generate reasonable MCQ options based on the topic
+                question.options = [
+                  `Option A related to ${newExam.topic}`,
+                  `Option B related to ${newExam.topic}`,
+                  `Option C related to ${newExam.topic}`,
+                  `Option D related to ${newExam.topic}`
+                ];
+                question.correct_answer = question.options[0];
+              } else {
+                question.correct_answer = `Sample answer for: ${questionText}`;
+                question.options = null;
+              }
+              
+              return question;
+            });
           }
-          
-          generatedQuestions.push(question);
+        } catch (parseError) {
+          console.log('Could not parse AI questions, using fallback:', parseError);
+        }
+        
+        // Fallback: Create structured questions if parsing failed
+        if (generatedQuestions.length === 0) {
+          for (let i = 1; i <= newExam.question_count; i++) {
+            const questionType = newExam.question_types[i % newExam.question_types.length];
+            
+            let question = {
+              id: `q_${Date.now()}_${i}`,
+              question: `Question ${i}: What is an important concept in ${newExam.topic}?`,
+              type: questionType,
+              explanation: `This question tests your understanding of ${newExam.topic} concepts.`
+            };
+            
+            if (questionType === 'mcq') {
+              question.options = [
+                `Correct answer related to ${newExam.topic}`,
+                `Incorrect option A for ${newExam.topic}`,
+                `Incorrect option B for ${newExam.topic}`,
+                `Incorrect option C for ${newExam.topic}`
+              ];
+              question.correct_answer = question.options[0];
+            } else {
+              question.correct_answer = `Sample correct answer for ${newExam.topic} question ${i}`;
+              question.options = null;
+            }
+            
+            generatedQuestions.push(question);
+          }
         }
         
         // Create the exam object
@@ -176,7 +223,7 @@ const ExamCoachPage = () => {
           question_count: newExam.question_count,
           time_limit: newExam.time_limit,
           question_types: newExam.question_types,
-          result: response.data.result, // Store the AI result
+          ai_result: response.data.result, // Store the raw AI result
           created_at: new Date().toISOString(),
           questions: generatedQuestions
         };
@@ -186,6 +233,8 @@ const ExamCoachPage = () => {
           const updatedExams = [...exams, generatedExam];
           setExams(updatedExams);
           localStorage.setItem(`examCoachExams_${userId}`, JSON.stringify(updatedExams));
+          
+          toast.success('Exam generated successfully!');
           
           // Reset form
           setNewExam({
@@ -200,12 +249,23 @@ const ExamCoachPage = () => {
           
         } catch (storageError) {
           console.error('Failed to save exam to localStorage:', storageError);
-          toast.error('Failed to save exam locally');
+          toast.error('Exam generated but failed to save locally');
         }
+        
+      } else {
+        throw new Error('Backend did not return success');
       }
     } catch (error) {
       console.error('Failed to generate exam:', error);
-      toast.error('Failed to generate exam. Please try again.');
+      
+      // Show more specific error messages
+      if (error.response?.status === 429) {
+        toast.error('AI service quota exceeded. Please try again later.');
+      } else if (error.response?.status >= 500) {
+        toast.error('Server error. Please try again later.');
+      } else {
+        toast.error(`Failed to generate exam: ${error.message}`);
+      }
     } finally {
       setLoading(false);
     }
